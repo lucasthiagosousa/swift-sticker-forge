@@ -121,6 +121,7 @@ function Index() {
             type: selected.type ?? config.type,
             title: selected.title ?? config.title,
             subtitle: selected.subtitle ?? config.subtitle,
+            qrLink: selected.qrLink ?? config.qrLink,
           }
         : config,
     [config, selected],
@@ -163,12 +164,15 @@ function Index() {
                 value: String(value).trim(),
                 title: r.title || r.titulo || "",
                 subtitle: r.subtitle || r.subtitulo || "",
+            qrLink: r.qrlink || r.link || r.url || "",
                 type:
-                  t === "barcode" || t === "barras"
-                    ? "barcode"
-                    : t === "qrcode" || t === "qr"
-                      ? "qrcode"
-                      : undefined,
+              t === "barcode" || t === "barras"
+                ? "barcode"
+                : t === "qrcode" || t === "qr"
+                  ? "qrcode"
+                  : t === "both" || t === "ambos"
+                    ? "both"
+                    : undefined,
               });
             })
             .filter(Boolean) as BatchItem[];
