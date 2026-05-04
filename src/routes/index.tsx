@@ -200,7 +200,12 @@ function Index() {
   const exportSingle = () => {
     if (!selected) return;
     exportLabelsPDF(
-      [{ value: selected.value, title: selected.title, subtitle: selected.subtitle }],
+      [{
+        value: selected.value,
+        title: selected.title,
+        subtitle: selected.subtitle,
+        qrLink: selected.qrLink,
+      }],
       { ...config, type: selected.type ?? config.type },
       "etiqueta.pdf",
     );
@@ -219,6 +224,7 @@ function Index() {
         value: i.value,
         title: i.title || "",
         subtitle: i.subtitle || "",
+        qrlink: i.qrLink || "",
         type: i.type || config.type,
       })),
     );
