@@ -1,7 +1,7 @@
 import QRCode from "qrcode";
 import JsBarcode from "jsbarcode";
 
-export type CodeType = "qrcode" | "barcode";
+export type CodeType = "qrcode" | "barcode" | "both";
 export type BarcodeFormat = "CODE128" | "EAN13" | "EAN8" | "UPC" | "CODE39" | "ITF14";
 
 export interface LabelConfig {
@@ -17,12 +17,16 @@ export interface LabelConfig {
   align: "left" | "center" | "right";
   fg: string;
   bg: string;
+  /** Default QR link/content when type === "both" and item has no qrLink */
+  qrLink?: string;
 }
 
 export interface LabelItem {
   value: string;
   title?: string;
   subtitle?: string;
+  /** Optional URL/text encoded into the QR when type === "both" or to override QR content */
+  qrLink?: string;
 }
 
 export const defaultConfig: LabelConfig = {
@@ -87,9 +91,54 @@ export async function renderToCanvas(
   if (codeAreaH < 10 || codeAreaW < 10) return;
 
   const tmp = document.createElement("canvas");
-  if (cfg.type === "qrcode") {
+  if (cfg.type === "both") {
+    // QR on the left, barcode on the right, sharing codeAreaW with a small gap
+    const gap = 4;
+    const qrSize = Math.min(codeAreaH, Math.floor((codeAreaW - gap) * 0.4));
+    const barW = codeAreaW - gap - qrSize;
+    const qrCanvas = document.createElement("canvas");
+    const qrContent = (cfg.qrLink && cfg.qrLink.trim()) || value || " ";
+    await QRCode.toCanvas(qrCanvas, qrContent, {
+      width: qrSize,
+      margin: 0,
+      color: { dark: cfg.fg, light: cfg.bg },
+    });
+    ctx.drawImage(qrCanvas, pad, topY + (codeAreaH - qrSize) / 2);
+    const barCanvas = document.createElement("canvas");
+    try {
+      JsBarcode(barCanvas, value || "0", {
+        format: cfg.barcodeFormat,
+        displayValue: false,
+        margin: 0,
+        background: cfg.bg,
+        lineColor: cfg.fg,
+        height: Math.max(20, codeAreaH),
+        width: 2,
+      });
+      const ratio = barCanvas.width / barCanvas.height;
+      let bw = barW;
+      let bh = bw / ratio;
+      if (bh > codeAreaH) {
+        bh = codeAreaH;
+        bw = bh * ratio;
+      }
+      ctx.drawImage(
+        barCanvas,
+        pad + qrSize + gap,
+        topY + (codeAreaH - bh) / 2,
+        bw,
+        bh,
+      );
+    } catch {
+      ctx.fillStyle = "red";
+      ctx.font = `${fs}px sans-serif`;
+      ctx.textAlign = "center";
+      ctx.fillText("Valor inválido p/ barras", pad + qrSize + gap + barW / 2, topY + codeAreaH / 2);
+    }
+  } else if (cfg.type === "qrcode") {
     const size = Math.min(codeAreaH, codeAreaW);
-    await QRCode.toCanvas(tmp, value || " ", {
+    const qrContent = (cfg.qrLink && cfg.qrLink.trim()) || value || " ";
+    await QRCode.toCanvas(tmp, qrContent, {
       width: Math.floor(size),
       margin: 0,
       color: { dark: cfg.fg, light: cfg.bg },

@@ -30,6 +30,7 @@ export async function exportLabelsPDF(
       ...cfg,
       title: it.title ?? cfg.title,
       subtitle: it.subtitle ?? cfg.subtitle,
+      qrLink: it.qrLink ?? cfg.qrLink,
     };
     await renderToCanvas(canvas, it.value, itemCfg);
     const data = canvas.toDataURL("image/png");

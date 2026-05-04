@@ -121,6 +121,7 @@ function Index() {
             type: selected.type ?? config.type,
             title: selected.title ?? config.title,
             subtitle: selected.subtitle ?? config.subtitle,
+            qrLink: selected.qrLink ?? config.qrLink,
           }
         : config,
     [config, selected],
@@ -163,12 +164,15 @@ function Index() {
                 value: String(value).trim(),
                 title: r.title || r.titulo || "",
                 subtitle: r.subtitle || r.subtitulo || "",
+            qrLink: r.qrlink || r.link || r.url || "",
                 type:
-                  t === "barcode" || t === "barras"
-                    ? "barcode"
-                    : t === "qrcode" || t === "qr"
-                      ? "qrcode"
-                      : undefined,
+              t === "barcode" || t === "barras"
+                ? "barcode"
+                : t === "qrcode" || t === "qr"
+                  ? "qrcode"
+                  : t === "both" || t === "ambos"
+                    ? "both"
+                    : undefined,
               });
             })
             .filter(Boolean) as BatchItem[];
@@ -196,7 +200,12 @@ function Index() {
   const exportSingle = () => {
     if (!selected) return;
     exportLabelsPDF(
-      [{ value: selected.value, title: selected.title, subtitle: selected.subtitle }],
+      [{
+        value: selected.value,
+        title: selected.title,
+        subtitle: selected.subtitle,
+        qrLink: selected.qrLink,
+      }],
       { ...config, type: selected.type ?? config.type },
       "etiqueta.pdf",
     );
@@ -215,6 +224,7 @@ function Index() {
         value: i.value,
         title: i.title || "",
         subtitle: i.subtitle || "",
+        qrlink: i.qrLink || "",
         type: i.type || config.type,
       })),
     );
@@ -378,7 +388,7 @@ function Index() {
                   className="flex-1"
                   onClick={() => updateItem(selected.id, { type: "qrcode" })}
                 >
-                  <QrCode /> QR Code
+                  <QrCode /> QR
                 </Button>
                 <Button
                   variant={
@@ -390,6 +400,16 @@ function Index() {
                 >
                   <Barcode /> Barras
                 </Button>
+                <Button
+                  variant={
+                    (selected.type ?? config.type) === "both" ? "default" : "outline"
+                  }
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => updateItem(selected.id, { type: "both" })}
+                >
+                  <QrCode /> + <Barcode /> Ambos
+                </Button>
               </div>
 
               <div>
@@ -399,6 +419,25 @@ function Index() {
                   onChange={(e) => updateItem(selected.id, { value: e.target.value })}
                 />
               </div>
+              {((selected.type ?? config.type) === "qrcode" ||
+                (selected.type ?? config.type) === "both") && (
+                <div>
+                  <Label className="text-xs">
+                    Link do chamado (QR){" "}
+                    <span className="text-muted-foreground">— opcional</span>
+                  </Label>
+                  <Input
+                    placeholder="https://chamados.exemplo.com/123"
+                    value={selected.qrLink || ""}
+                    onChange={(e) =>
+                      updateItem(selected.id, { qrLink: e.target.value })
+                    }
+                  />
+                  <p className="mt-1 text-[10px] text-muted-foreground">
+                    Se preenchido, o QR aponta para este link em vez do conteúdo.
+                  </p>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label className="text-xs">Título</Label>
