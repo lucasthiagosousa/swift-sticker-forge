@@ -1,8 +1,8 @@
 import { jsPDF } from "jspdf";
-import { renderToCanvas, type LabelConfig } from "./codegen";
+import { renderToCanvas, type LabelConfig, type LabelItem } from "./codegen";
 
 export async function exportLabelsPDF(
-  values: string[],
+  items: LabelItem[],
   cfg: LabelConfig,
   filename = "etiquetas.pdf",
 ) {
@@ -18,14 +18,20 @@ export async function exportLabelsPDF(
   const perPage = cols * rows;
 
   const canvas = document.createElement("canvas");
-  for (let i = 0; i < values.length; i++) {
+  for (let i = 0; i < items.length; i++) {
     const idx = i % perPage;
     if (i > 0 && idx === 0) doc.addPage();
     const c = idx % cols;
     const r = Math.floor(idx / cols);
     const x = margin + c * (W + gap);
     const y = margin + r * (H + gap);
-    await renderToCanvas(canvas, values[i], cfg);
+    const it = items[i];
+    const itemCfg: LabelConfig = {
+      ...cfg,
+      title: it.title ?? cfg.title,
+      subtitle: it.subtitle ?? cfg.subtitle,
+    };
+    await renderToCanvas(canvas, it.value, itemCfg);
     const data = canvas.toDataURL("image/png");
     doc.addImage(data, "PNG", x, y, W, H);
   }
