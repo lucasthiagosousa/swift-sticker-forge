@@ -4,7 +4,6 @@ import Papa from "papaparse";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
 import { Slider } from "@/components/ui/slider";
 import {
   Select,
@@ -14,9 +13,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LabelPreview } from "@/components/LabelPreview";
-import { defaultConfig, type LabelConfig } from "@/lib/codegen";
+import { defaultConfig, type LabelConfig, type LabelItem, type CodeType } from "@/lib/codegen";
 import { exportLabelsPDF } from "@/lib/pdf";
 import {
   QrCode,
@@ -27,11 +25,18 @@ import {
   Upload,
   FileDown,
   Sparkles,
+  Plus,
+  Copy,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
 
 export const Route = createFileRoute("/")({ component: Index });
+
+interface BatchItem extends LabelItem {
+  id: string;
+  type?: CodeType;
+}
 
 interface Preset {
   id: string;
@@ -41,6 +46,15 @@ interface Preset {
 
 const LS_PRESETS = "etiqueta.presets";
 const LS_CONFIG = "etiqueta.config";
+const LS_ITEMS = "etiqueta.items";
+
+const newItem = (overrides: Partial<BatchItem> = {}): BatchItem => ({
+  id: crypto.randomUUID(),
+  value: "ETQ-0001",
+  title: "",
+  subtitle: "",
+  ...overrides,
+});
 
 function Index() {
   const [config, setConfig] = useState<LabelConfig>(() => {
@@ -52,8 +66,27 @@ function Index() {
       return defaultConfig;
     }
   });
-  const [value, setValue] = useState("ETQ-0001");
-  const [batch, setBatch] = useState("ETQ-0001\nETQ-0002\nETQ-0003");
+
+  const [items, setItems] = useState<BatchItem[]>(() => {
+    if (typeof window === "undefined") return [newItem()];
+    try {
+      const raw = localStorage.getItem(LS_ITEMS);
+      const parsed = raw ? JSON.parse(raw) : null;
+      return parsed && parsed.length ? parsed : [newItem()];
+    } catch {
+      return [newItem()];
+    }
+  });
+
+  const [selectedId, setSelectedId] = useState<string>(() => "");
+  const selected = items.find((i) => i.id === selectedId) || items[0];
+
+  useEffect(() => {
+    if (!items.find((i) => i.id === selectedId) && items[0]) {
+      setSelectedId(items[0].id);
+    }
+  }, [items, selectedId]);
+
   const [presets, setPresets] = useState<Preset[]>(() => {
     if (typeof window === "undefined") return [];
     try {
@@ -70,61 +103,146 @@ function Index() {
   useEffect(() => {
     localStorage.setItem(LS_PRESETS, JSON.stringify(presets));
   }, [presets]);
+  useEffect(() => {
+    localStorage.setItem(LS_ITEMS, JSON.stringify(items));
+  }, [items]);
 
   const update = <K extends keyof LabelConfig>(k: K, v: LabelConfig[K]) =>
     setConfig((c) => ({ ...c, [k]: v }));
 
-  const batchValues = useMemo(
-    () => batch.split("\n").map((s) => s.trim()).filter(Boolean),
-    [batch],
+  const updateItem = (id: string, patch: Partial<BatchItem>) =>
+    setItems((arr) => arr.map((i) => (i.id === id ? { ...i, ...patch } : i)));
+
+  const previewConfig: LabelConfig = useMemo(
+    () =>
+      selected
+        ? {
+            ...config,
+            type: selected.type ?? config.type,
+            title: selected.title ?? config.title,
+            subtitle: selected.subtitle ?? config.subtitle,
+          }
+        : config,
+    [config, selected],
   );
 
   const savePreset = () => {
     if (!presetName.trim()) return toast.error("Dê um nome ao preset");
-    const p: Preset = { id: crypto.randomUUID(), name: presetName.trim(), config };
-    setPresets((arr) => [p, ...arr]);
+    setPresets((arr) => [
+      { id: crypto.randomUUID(), name: presetName.trim(), config },
+      ...arr,
+    ]);
     setPresetName("");
     toast.success("Preset salvo");
   };
-
   const loadPreset = (id: string) => {
     const p = presets.find((x) => x.id === id);
     if (p) {
       setConfig(p.config);
-      toast.success(`Preset "${p.name}" aplicado`);
+      toast.success(`"${p.name}" aplicado`);
     }
   };
-
   const removePreset = (id: string) =>
     setPresets((arr) => arr.filter((x) => x.id !== id));
 
   const onImportCSV = (file: File) => {
-    Papa.parse(file, {
+    Papa.parse<Record<string, string>>(file, {
+      header: true,
+      skipEmptyLines: true,
       complete: (res) => {
-        const rows = (res.data as string[][])
-          .flat()
-          .map((s) => String(s).trim())
-          .filter(Boolean);
-        setBatch(rows.join("\n"));
-        toast.success(`${rows.length} valores importados`);
+        const rows = res.data;
+        let imported: BatchItem[] = [];
+        if (rows.length && typeof rows[0] === "object" && !Array.isArray(rows[0])) {
+          imported = rows
+            .map((r) => {
+              const value =
+                r.value || r.valor || r.code || r.codigo || Object.values(r)[0] || "";
+              if (!value) return null;
+              const t = (r.type || r.tipo || "").toLowerCase();
+              return newItem({
+                value: String(value).trim(),
+                title: r.title || r.titulo || "",
+                subtitle: r.subtitle || r.subtitulo || "",
+                type:
+                  t === "barcode" || t === "barras"
+                    ? "barcode"
+                    : t === "qrcode" || t === "qr"
+                      ? "qrcode"
+                      : undefined,
+              });
+            })
+            .filter(Boolean) as BatchItem[];
+        }
+        if (!imported.length) {
+          // fallback: parse as plain list
+          Papa.parse(file, {
+            complete: (r2) => {
+              const flat = (r2.data as string[][])
+                .flat()
+                .map((s) => String(s).trim())
+                .filter(Boolean);
+              setItems(flat.map((v) => newItem({ value: v })));
+              toast.success(`${flat.length} itens importados`);
+            },
+          });
+          return;
+        }
+        setItems(imported);
+        toast.success(`${imported.length} itens importados`);
       },
     });
   };
 
-  const exportSingle = () =>
-    exportLabelsPDF([value || " "], config, "etiqueta.pdf");
-  const exportBatch = () => {
-    if (!batchValues.length) return toast.error("Lista vazia");
-    exportLabelsPDF(batchValues, config, `etiquetas-${batchValues.length}.pdf`);
+  const exportSingle = () => {
+    if (!selected) return;
+    exportLabelsPDF(
+      [{ value: selected.value, title: selected.title, subtitle: selected.subtitle }],
+      { ...config, type: selected.type ?? config.type },
+      "etiqueta.pdf",
+    );
   };
+
+  const exportBatch = () => {
+    if (!items.length) return toast.error("Lista vazia");
+    // group consecutive items by type to keep formatting; simplest: one PDF, mixed types — render each with its own type
+    // We render via per-item override of cfg.type by iterating with custom export
+    exportMixed(items, config);
+  };
+
   const exportListCSV = () => {
-    const csv = Papa.unparse(batchValues.map((v) => [v]));
+    const csv = Papa.unparse(
+      items.map((i) => ({
+        value: i.value,
+        title: i.title || "",
+        subtitle: i.subtitle || "",
+        type: i.type || config.type,
+      })),
+    );
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "lista.csv";
+    a.download = "etiquetas.csv";
     a.click();
   };
+
+  const addItem = () => {
+    const it = newItem({ value: `ETQ-${String(items.length + 1).padStart(4, "0")}` });
+    setItems((arr) => [...arr, it]);
+    setSelectedId(it.id);
+  };
+  const dupItem = (id: string) => {
+    const src = items.find((i) => i.id === id);
+    if (!src) return;
+    const it = newItem({ ...src, id: crypto.randomUUID() });
+    setItems((arr) => {
+      const idx = arr.findIndex((i) => i.id === id);
+      const next = [...arr];
+      next.splice(idx + 1, 0, it);
+      return next;
+    });
+  };
+  const delItem = (id: string) =>
+    setItems((arr) => (arr.length > 1 ? arr.filter((i) => i.id !== id) : arr));
 
   return (
     <div className="min-h-screen bg-background">
@@ -143,42 +261,166 @@ function Index() {
         </div>
       </header>
 
-      <main className="mx-auto grid max-w-7xl gap-6 px-6 py-8 lg:grid-cols-[380px_1fr]">
-        {/* Editor */}
-        <section className="space-y-6">
-          <div className="rounded-xl border border-border bg-card p-5">
-            <div className="mb-4 flex gap-2">
-              <Button
-                variant={config.type === "qrcode" ? "default" : "outline"}
-                size="sm"
-                className="flex-1"
-                onClick={() => update("type", "qrcode")}
-              >
-                <QrCode /> QR Code
-              </Button>
-              <Button
-                variant={config.type === "barcode" ? "default" : "outline"}
-                size="sm"
-                className="flex-1"
-                onClick={() => update("type", "barcode")}
-              >
-                <Barcode /> Barras
+      <main className="mx-auto grid max-w-7xl gap-6 px-6 py-8 lg:grid-cols-[320px_1fr_340px]">
+        {/* Lista de etiquetas */}
+        <section className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold">Etiquetas ({items.length})</h2>
+            <Button size="sm" variant="outline" onClick={addItem}>
+              <Plus /> Nova
+            </Button>
+          </div>
+          <div className="space-y-2 max-h-[70vh] overflow-y-auto pr-1">
+            {items.map((it) => {
+              const active = it.id === selected?.id;
+              const t = it.type ?? config.type;
+              return (
+                <div
+                  key={it.id}
+                  onClick={() => setSelectedId(it.id)}
+                  className={`group cursor-pointer rounded-lg border p-3 transition ${
+                    active
+                      ? "border-foreground bg-secondary"
+                      : "border-border hover:bg-muted/50"
+                  }`}
+                >
+                  <div className="flex items-start gap-2">
+                    <div className="mt-0.5 text-muted-foreground">
+                      {t === "qrcode" ? (
+                        <QrCode className="h-4 w-4" />
+                      ) : (
+                        <Barcode className="h-4 w-4" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate font-mono text-xs">{it.value || "—"}</div>
+                      {(it.title || it.subtitle) && (
+                        <div className="truncate text-xs text-muted-foreground">
+                          {[it.title, it.subtitle].filter(Boolean).join(" · ")}
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex gap-1 opacity-0 group-hover:opacity-100">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          dupItem(it.id);
+                        }}
+                        className="text-muted-foreground hover:text-foreground"
+                      >
+                        <Copy className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          delItem(it.id);
+                        }}
+                        className="text-muted-foreground hover:text-destructive"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+            <div className="flex flex-wrap gap-2">
+              <label className="inline-flex flex-1">
+                <input
+                  type="file"
+                  accept=".csv,.txt"
+                  className="hidden"
+                  onChange={(e) =>
+                    e.target.files?.[0] && onImportCSV(e.target.files[0])
+                  }
+                />
+                <Button asChild variant="outline" size="sm" className="w-full">
+                  <span>
+                    <Upload /> Importar
+                  </span>
+                </Button>
+              </label>
+              <Button onClick={exportListCSV} variant="outline" size="sm" className="flex-1">
+                <FileDown /> Exportar CSV
               </Button>
             </div>
+            <Button onClick={exportBatch} className="w-full" size="sm">
+              <Download /> PDF em lote
+            </Button>
+            <p className="text-[10px] leading-relaxed text-muted-foreground">
+              CSV aceita colunas: value, title, subtitle, type (qrcode/barcode).
+            </p>
+          </div>
+        </section>
 
-            <div className="space-y-3">
+        {/* Preview + edição do item */}
+        <section className="space-y-4">
+          <LabelPreview value={selected?.value || ""} config={previewConfig} />
+
+          {selected && (
+            <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold">Editar etiqueta</h3>
+                <Button onClick={exportSingle} size="sm" variant="outline">
+                  <Download /> PDF desta
+                </Button>
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  variant={
+                    (selected.type ?? config.type) === "qrcode" ? "default" : "outline"
+                  }
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => updateItem(selected.id, { type: "qrcode" })}
+                >
+                  <QrCode /> QR Code
+                </Button>
+                <Button
+                  variant={
+                    (selected.type ?? config.type) === "barcode" ? "default" : "outline"
+                  }
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => updateItem(selected.id, { type: "barcode" })}
+                >
+                  <Barcode /> Barras
+                </Button>
+              </div>
+
               <div>
                 <Label className="text-xs">Conteúdo</Label>
                 <Input
-                  value={value}
-                  onChange={(e) => setValue(e.target.value)}
-                  placeholder="Texto, URL, código..."
+                  value={selected.value}
+                  onChange={(e) => updateItem(selected.id, { value: e.target.value })}
                 />
               </div>
-
-              {config.type === "barcode" && (
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label className="text-xs">Formato</Label>
+                  <Label className="text-xs">Título</Label>
+                  <Input
+                    value={selected.title || ""}
+                    onChange={(e) => updateItem(selected.id, { title: e.target.value })}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Subtítulo</Label>
+                  <Input
+                    value={selected.subtitle || ""}
+                    onChange={(e) =>
+                      updateItem(selected.id, { subtitle: e.target.value })
+                    }
+                  />
+                </div>
+              </div>
+
+              {(selected.type ?? config.type) === "barcode" && (
+                <div>
+                  <Label className="text-xs">Formato (global)</Label>
                   <Select
                     value={config.barcodeFormat}
                     onValueChange={(v) => update("barcodeFormat", v as never)}
@@ -187,82 +429,35 @@ function Index() {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {["CODE128", "EAN13", "EAN8", "UPC", "CODE39", "ITF14"].map(
-                        (f) => (
-                          <SelectItem key={f} value={f}>
-                            {f}
-                          </SelectItem>
-                        ),
-                      )}
+                      {["CODE128", "EAN13", "EAN8", "UPC", "CODE39", "ITF14"].map((f) => (
+                        <SelectItem key={f} value={f}>
+                          {f}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
               )}
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label className="text-xs">Título</Label>
-                  <Input
-                    value={config.title}
-                    onChange={(e) => update("title", e.target.value)}
-                    placeholder="Opcional"
-                  />
-                </div>
-                <div>
-                  <Label className="text-xs">Subtítulo</Label>
-                  <Input
-                    value={config.subtitle}
-                    onChange={(e) => update("subtitle", e.target.value)}
-                    placeholder="Opcional"
-                  />
-                </div>
-              </div>
             </div>
-          </div>
+          )}
+        </section>
 
+        {/* Layout + Presets */}
+        <section className="space-y-6">
           <div className="rounded-xl border border-border bg-card p-5 space-y-4">
             <h3 className="text-sm font-semibold">Layout</h3>
-            <SliderRow
-              label="Largura"
-              suffix="mm"
-              value={config.width}
-              min={20}
-              max={200}
-              onChange={(v) => update("width", v)}
-            />
-            <SliderRow
-              label="Altura"
-              suffix="mm"
-              value={config.height}
-              min={20}
-              max={200}
-              onChange={(v) => update("height", v)}
-            />
-            <SliderRow
-              label="Fonte"
-              suffix="pt"
-              value={config.fontSize}
-              min={6}
-              max={24}
-              onChange={(v) => update("fontSize", v)}
-            />
-            <SliderRow
-              label="Padding"
-              suffix="mm"
-              value={config.padding}
-              min={0}
-              max={20}
-              onChange={(v) => update("padding", v)}
-            />
+            <SliderRow label="Largura" suffix="mm" value={config.width} min={20} max={200}
+              onChange={(v) => update("width", v)} />
+            <SliderRow label="Altura" suffix="mm" value={config.height} min={20} max={200}
+              onChange={(v) => update("height", v)} />
+            <SliderRow label="Fonte" suffix="pt" value={config.fontSize} min={6} max={24}
+              onChange={(v) => update("fontSize", v)} />
+            <SliderRow label="Padding" suffix="mm" value={config.padding} min={0} max={20}
+              onChange={(v) => update("padding", v)} />
             <div>
               <Label className="text-xs">Alinhamento</Label>
-              <Select
-                value={config.align}
-                onValueChange={(v) => update("align", v as never)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+              <Select value={config.align} onValueChange={(v) => update("align", v as never)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="left">Esquerda</SelectItem>
                   <SelectItem value="center">Centro</SelectItem>
@@ -273,40 +468,29 @@ function Index() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-xs">Cor</Label>
-                <input
-                  type="color"
-                  value={config.fg}
+                <input type="color" value={config.fg}
                   onChange={(e) => update("fg", e.target.value)}
-                  className="h-9 w-full cursor-pointer rounded-md border border-input bg-background"
-                />
+                  className="h-9 w-full cursor-pointer rounded-md border border-input bg-background" />
               </div>
               <div>
                 <Label className="text-xs">Fundo</Label>
-                <input
-                  type="color"
-                  value={config.bg}
+                <input type="color" value={config.bg}
                   onChange={(e) => update("bg", e.target.value)}
-                  className="h-9 w-full cursor-pointer rounded-md border border-input bg-background"
-                />
+                  className="h-9 w-full cursor-pointer rounded-md border border-input bg-background" />
               </div>
             </div>
             <div className="flex items-center justify-between">
               <Label className="text-xs">Mostrar valor</Label>
-              <Switch
-                checked={config.showValue}
-                onCheckedChange={(v) => update("showValue", v)}
-              />
+              <Switch checked={config.showValue}
+                onCheckedChange={(v) => update("showValue", v)} />
             </div>
           </div>
 
           <div className="rounded-xl border border-border bg-card p-5 space-y-3">
-            <h3 className="text-sm font-semibold">Presets</h3>
+            <h3 className="text-sm font-semibold">Presets de layout</h3>
             <div className="flex gap-2">
-              <Input
-                value={presetName}
-                onChange={(e) => setPresetName(e.target.value)}
-                placeholder="Nome do preset"
-              />
+              <Input value={presetName} onChange={(e) => setPresetName(e.target.value)}
+                placeholder="Nome" />
               <Button onClick={savePreset} size="icon" variant="outline">
                 <Save />
               </Button>
@@ -318,20 +502,13 @@ function Index() {
             )}
             <div className="space-y-1">
               {presets.map((p) => (
-                <div
-                  key={p.id}
-                  className="flex items-center justify-between rounded-md border border-border px-3 py-2"
-                >
-                  <button
-                    onClick={() => loadPreset(p.id)}
-                    className="text-sm font-medium hover:underline"
-                  >
+                <div key={p.id}
+                  className="flex items-center justify-between rounded-md border border-border px-3 py-2">
+                  <button onClick={() => loadPreset(p.id)} className="text-sm font-medium hover:underline">
                     {p.name}
                   </button>
-                  <button
-                    onClick={() => removePreset(p.id)}
-                    className="text-muted-foreground hover:text-destructive"
-                  >
+                  <button onClick={() => removePreset(p.id)}
+                    className="text-muted-foreground hover:text-destructive">
                     <Trash2 className="h-4 w-4" />
                   </button>
                 </div>
@@ -339,81 +516,52 @@ function Index() {
             </div>
           </div>
         </section>
-
-        {/* Preview + batch */}
-        <section className="space-y-6">
-          <LabelPreview value={value} config={config} />
-
-          <Tabs defaultValue="single" className="rounded-xl border border-border bg-card p-5">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="single">Etiqueta única</TabsTrigger>
-              <TabsTrigger value="batch">Lote</TabsTrigger>
-            </TabsList>
-            <TabsContent value="single" className="pt-4">
-              <Button onClick={exportSingle} className="w-full">
-                <Download /> Exportar PDF
-              </Button>
-            </TabsContent>
-            <TabsContent value="batch" className="space-y-3 pt-4">
-              <div>
-                <Label className="text-xs">
-                  Lista ({batchValues.length} itens) — um por linha
-                </Label>
-                <Textarea
-                  value={batch}
-                  onChange={(e) => setBatch(e.target.value)}
-                  rows={8}
-                  className="font-mono text-sm"
-                />
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <Button onClick={exportBatch} className="flex-1 min-w-[160px]">
-                  <Download /> Exportar PDF em lote
-                </Button>
-                <label className="inline-flex">
-                  <input
-                    type="file"
-                    accept=".csv,.txt"
-                    className="hidden"
-                    onChange={(e) =>
-                      e.target.files?.[0] && onImportCSV(e.target.files[0])
-                    }
-                  />
-                  <Button asChild variant="outline">
-                    <span>
-                      <Upload /> Importar CSV
-                    </span>
-                  </Button>
-                </label>
-                <Button onClick={exportListCSV} variant="outline">
-                  <FileDown /> Exportar lista
-                </Button>
-              </div>
-            </TabsContent>
-          </Tabs>
-        </section>
       </main>
 
       <footer className="border-t border-border py-6 text-center text-xs text-muted-foreground">
-        Tudo acontece no seu navegador — nada é enviado para servidores.
+        Tudo no seu navegador — nada é enviado para servidores.
       </footer>
     </div>
   );
 }
 
+async function exportMixed(items: BatchItem[], cfg: LabelConfig) {
+  // group by type to keep PDF correct: actually exportLabelsPDF accepts per-item title/subtitle but not type.
+  // Workaround: split into runs of same type, exporting separate PDFs would be ugly.
+  // Simpler: render via a lightweight loop using exportLabelsPDF per-type chunk concatenated into one PDF.
+  const { jsPDF } = await import("jspdf");
+  const { renderToCanvas } = await import("@/lib/codegen");
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const pageW = 210, pageH = 297, margin = 8, gap = 3;
+  const W = cfg.width, H = cfg.height;
+  const cols = Math.max(1, Math.floor((pageW - margin * 2 + gap) / (W + gap)));
+  const rows = Math.max(1, Math.floor((pageH - margin * 2 + gap) / (H + gap)));
+  const perPage = cols * rows;
+  const canvas = document.createElement("canvas");
+  for (let i = 0; i < items.length; i++) {
+    const idx = i % perPage;
+    if (i > 0 && idx === 0) doc.addPage();
+    const c = idx % cols;
+    const r = Math.floor(idx / cols);
+    const x = margin + c * (W + gap);
+    const y = margin + r * (H + gap);
+    const it = items[i];
+    const itemCfg: LabelConfig = {
+      ...cfg,
+      type: it.type ?? cfg.type,
+      title: it.title ?? cfg.title,
+      subtitle: it.subtitle ?? cfg.subtitle,
+    };
+    await renderToCanvas(canvas, it.value, itemCfg);
+    doc.addImage(canvas.toDataURL("image/png"), "PNG", x, y, W, H);
+  }
+  doc.save(`etiquetas-${items.length}.pdf`);
+}
+
 function SliderRow({
-  label,
-  value,
-  min,
-  max,
-  suffix,
-  onChange,
+  label, value, min, max, suffix, onChange,
 }: {
-  label: string;
-  value: number;
-  min: number;
-  max: number;
-  suffix?: string;
+  label: string; value: number; min: number; max: number; suffix?: string;
   onChange: (v: number) => void;
 }) {
   return (
@@ -421,17 +569,11 @@ function SliderRow({
       <div className="mb-1 flex items-center justify-between">
         <Label className="text-xs">{label}</Label>
         <span className="text-xs tabular-nums text-muted-foreground">
-          {value}
-          {suffix}
+          {value}{suffix}
         </span>
       </div>
-      <Slider
-        value={[value]}
-        min={min}
-        max={max}
-        step={1}
-        onValueChange={(v) => onChange(v[0])}
-      />
+      <Slider value={[value]} min={min} max={max} step={1}
+        onValueChange={(v) => onChange(v[0])} />
     </div>
   );
 }

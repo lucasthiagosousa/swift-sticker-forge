@@ -19,6 +19,12 @@ export interface LabelConfig {
   bg: string;
 }
 
+export interface LabelItem {
+  value: string;
+  title?: string;
+  subtitle?: string;
+}
+
 export const defaultConfig: LabelConfig = {
   type: "qrcode",
   barcodeFormat: "CODE128",
