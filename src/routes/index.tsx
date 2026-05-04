@@ -388,7 +388,7 @@ function Index() {
                   className="flex-1"
                   onClick={() => updateItem(selected.id, { type: "qrcode" })}
                 >
-                  <QrCode /> QR Code
+                  <QrCode /> QR
                 </Button>
                 <Button
                   variant={
@@ -400,6 +400,16 @@ function Index() {
                 >
                   <Barcode /> Barras
                 </Button>
+                <Button
+                  variant={
+                    (selected.type ?? config.type) === "both" ? "default" : "outline"
+                  }
+                  size="sm"
+                  className="flex-1"
+                  onClick={() => updateItem(selected.id, { type: "both" })}
+                >
+                  <QrCode /> + <Barcode /> Ambos
+                </Button>
               </div>
 
               <div>
@@ -409,6 +419,25 @@ function Index() {
                   onChange={(e) => updateItem(selected.id, { value: e.target.value })}
                 />
               </div>
+              {((selected.type ?? config.type) === "qrcode" ||
+                (selected.type ?? config.type) === "both") && (
+                <div>
+                  <Label className="text-xs">
+                    Link do chamado (QR){" "}
+                    <span className="text-muted-foreground">— opcional</span>
+                  </Label>
+                  <Input
+                    placeholder="https://chamados.exemplo.com/123"
+                    value={selected.qrLink || ""}
+                    onChange={(e) =>
+                      updateItem(selected.id, { qrLink: e.target.value })
+                    }
+                  />
+                  <p className="mt-1 text-[10px] text-muted-foreground">
+                    Se preenchido, o QR aponta para este link em vez do conteúdo.
+                  </p>
+                </div>
+              )}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label className="text-xs">Título</Label>
