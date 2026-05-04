@@ -32,11 +32,15 @@ export const Route = createRootRoute({
       { title: "Etiqueta — Gerador de QR Code & Código de Barras" },
       { name: "description", content: "Crie, edite e exporte etiquetas com QR code e código de barras em PDF. 100% no navegador." },
       { name: "author", content: "Etiqueta" },
-      { property: "og:title", content: "Etiqueta — QR Code & Código de Barras" },
-      { property: "og:description", content: "Gerador minimalista de etiquetas em PDF, com lote, presets e edição visual." },
+      { property: "og:title", content: "Etiqueta — Gerador de QR Code & Código de Barras" },
+      { property: "og:description", content: "Crie, edite e exporte etiquetas com QR code e código de barras em PDF. 100% no navegador." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
       { name: "twitter:site", content: "@Lovable" },
+      { name: "twitter:title", content: "Etiqueta — Gerador de QR Code & Código de Barras" },
+      { name: "twitter:description", content: "Crie, edite e exporte etiquetas com QR code e código de barras em PDF. 100% no navegador." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/e5cc1338-3609-4000-85c8-b27be1b858d7/id-preview-f50c65d9--4421eb9c-dfb8-49c0-8801-1110ea65a5f3.lovable.app-1777869743247.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/e5cc1338-3609-4000-85c8-b27be1b858d7/id-preview-f50c65d9--4421eb9c-dfb8-49c0-8801-1110ea65a5f3.lovable.app-1777869743247.png" },
     ],
     links: [
       {
