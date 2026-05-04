@@ -1,7 +1,7 @@
 import QRCode from "qrcode";
 import JsBarcode from "jsbarcode";
 
-export type CodeType = "qrcode" | "barcode";
+export type CodeType = "qrcode" | "barcode" | "both";
 export type BarcodeFormat = "CODE128" | "EAN13" | "EAN8" | "UPC" | "CODE39" | "ITF14";
 
 export interface LabelConfig {
@@ -23,6 +23,8 @@ export interface LabelItem {
   value: string;
   title?: string;
   subtitle?: string;
+  /** Optional URL/text encoded into the QR when type === "both" or to override QR content */
+  qrLink?: string;
 }
 
 export const defaultConfig: LabelConfig = {
