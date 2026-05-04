@@ -17,6 +17,8 @@ export interface LabelConfig {
   align: "left" | "center" | "right";
   fg: string;
   bg: string;
+  /** Default QR link/content when type === "both" and item has no qrLink */
+  qrLink?: string;
 }
 
 export interface LabelItem {
