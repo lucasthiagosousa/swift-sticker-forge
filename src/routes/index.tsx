@@ -47,6 +47,32 @@ interface Preset {
 const LS_PRESETS = "etiqueta.presets";
 const LS_CONFIG = "etiqueta.config";
 const LS_ITEMS = "etiqueta.items";
+const LS_PRINT = "etiqueta.print";
+
+interface PrintConfig {
+  format: "a4" | "letter" | "zebra" | "custom";
+  pageW: number; // mm
+  pageH: number; // mm
+  margin: number; // mm
+  gap: number; // mm
+  orientation: "portrait" | "landscape";
+}
+
+const PRINT_PRESETS: Record<PrintConfig["format"], { pageW: number; pageH: number }> = {
+  a4: { pageW: 210, pageH: 297 },
+  letter: { pageW: 216, pageH: 279 },
+  zebra: { pageW: 102, pageH: 152 }, // 4x6"
+  custom: { pageW: 100, pageH: 150 },
+};
+
+const defaultPrint: PrintConfig = {
+  format: "a4",
+  pageW: 210,
+  pageH: 297,
+  margin: 8,
+  gap: 3,
+  orientation: "portrait",
+};
 
 const newItem = (overrides: Partial<BatchItem> = {}): BatchItem => ({
   id: crypto.randomUUID(),
@@ -97,6 +123,18 @@ function Index() {
   });
   const [presetName, setPresetName] = useState("");
 
+  const [printCfg, setPrintCfg] = useState<PrintConfig>(() => {
+    if (typeof window === "undefined") return defaultPrint;
+    try {
+      const raw = localStorage.getItem(LS_PRINT);
+      return raw ? { ...defaultPrint, ...JSON.parse(raw) } : defaultPrint;
+    } catch {
+      return defaultPrint;
+    }
+  });
+  const updatePrint = <K extends keyof PrintConfig>(k: K, v: PrintConfig[K]) =>
+    setPrintCfg((c) => ({ ...c, [k]: v }));
+
   useEffect(() => {
     localStorage.setItem(LS_CONFIG, JSON.stringify(config));
   }, [config]);
@@ -106,6 +144,9 @@ function Index() {
   useEffect(() => {
     localStorage.setItem(LS_ITEMS, JSON.stringify(items));
   }, [items]);
+  useEffect(() => {
+    localStorage.setItem(LS_PRINT, JSON.stringify(printCfg));
+  }, [printCfg]);
 
   const update = <K extends keyof LabelConfig>(k: K, v: LabelConfig[K]) =>
     setConfig((c) => ({ ...c, [k]: v }));
@@ -199,23 +240,17 @@ function Index() {
 
   const exportSingle = () => {
     if (!selected) return;
-    exportLabelsPDF(
-      [{
-        value: selected.value,
-        title: selected.title,
-        subtitle: selected.subtitle,
-        qrLink: selected.qrLink,
-      }],
-      { ...config, type: selected.type ?? config.type },
+    exportMixed(
+      [{ ...selected, type: selected.type ?? config.type }],
+      config,
+      printCfg,
       "etiqueta.pdf",
     );
   };
 
   const exportBatch = () => {
     if (!items.length) return toast.error("Lista vazia");
-    // group consecutive items by type to keep formatting; simplest: one PDF, mixed types — render each with its own type
-    // We render via per-item override of cfg.type by iterating with custom export
-    exportMixed(items, config);
+    exportMixed(items, config, printCfg);
   };
 
   const exportListCSV = () => {
@@ -265,9 +300,6 @@ function Index() {
             </div>
             <h1 className="text-lg font-semibold tracking-tight">Etiqueta</h1>
           </div>
-          <p className="hidden text-xs text-muted-foreground sm:block">
-            QR Code & Código de Barras · 100% no navegador
-          </p>
         </div>
       </header>
 
@@ -477,6 +509,17 @@ function Index() {
                   </Select>
                 </div>
               )}
+
+              {(selected.type ?? config.type) === "both" && (
+                <SliderRow
+                  label="Espaço entre QR e Barras"
+                  suffix="mm"
+                  value={config.bothGap ?? 2}
+                  min={0}
+                  max={20}
+                  onChange={(v) => update("bothGap", v)}
+                />
+              )}
             </div>
           )}
         </section>
@@ -554,24 +597,106 @@ function Index() {
               ))}
             </div>
           </div>
+
+          <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+            <h3 className="text-sm font-semibold">Impressão</h3>
+            <div>
+              <Label className="text-xs">Formato da página</Label>
+              <Select
+                value={printCfg.format}
+                onValueChange={(v) => {
+                  const f = v as PrintConfig["format"];
+                  const p = PRINT_PRESETS[f];
+                  setPrintCfg((c) => ({ ...c, format: f, pageW: p.pageW, pageH: p.pageH }));
+                }}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="a4">A4 (210×297mm)</SelectItem>
+                  <SelectItem value="letter">Letter (216×279mm)</SelectItem>
+                  <SelectItem value="zebra">Zebra 4×6" (102×152mm)</SelectItem>
+                  <SelectItem value="custom">Personalizado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">Orientação</Label>
+              <Select
+                value={printCfg.orientation}
+                onValueChange={(v) => updatePrint("orientation", v as PrintConfig["orientation"])}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="portrait">Retrato</SelectItem>
+                  <SelectItem value="landscape">Paisagem</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {printCfg.format === "custom" && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Largura (mm)</Label>
+                  <Input
+                    type="number"
+                    value={printCfg.pageW}
+                    onChange={(e) => updatePrint("pageW", Number(e.target.value) || 0)}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Altura (mm)</Label>
+                  <Input
+                    type="number"
+                    value={printCfg.pageH}
+                    onChange={(e) => updatePrint("pageH", Number(e.target.value) || 0)}
+                  />
+                </div>
+              </div>
+            )}
+            <SliderRow
+              label="Margem"
+              suffix="mm"
+              value={printCfg.margin}
+              min={0}
+              max={30}
+              onChange={(v) => updatePrint("margin", v)}
+            />
+            <SliderRow
+              label="Espaço entre etiquetas"
+              suffix="mm"
+              value={printCfg.gap}
+              min={0}
+              max={20}
+              onChange={(v) => updatePrint("gap", v)}
+            />
+            <p className="text-[10px] text-muted-foreground">
+              Para impressoras Zebra, use o formato 4×6" ou personalize a área da etiqueta.
+            </p>
+          </div>
         </section>
       </main>
 
-      <footer className="border-t border-border py-6 text-center text-xs text-muted-foreground">
-        Tudo no seu navegador — nada é enviado para servidores.
-      </footer>
+
     </div>
   );
 }
 
-async function exportMixed(items: BatchItem[], cfg: LabelConfig) {
-  // group by type to keep PDF correct: actually exportLabelsPDF accepts per-item title/subtitle but not type.
-  // Workaround: split into runs of same type, exporting separate PDFs would be ugly.
-  // Simpler: render via a lightweight loop using exportLabelsPDF per-type chunk concatenated into one PDF.
+async function exportMixed(
+  items: BatchItem[],
+  cfg: LabelConfig,
+  print: PrintConfig,
+  filename = `etiquetas-${items.length}.pdf`,
+) {
   const { jsPDF } = await import("jspdf");
   const { renderToCanvas } = await import("@/lib/codegen");
-  const doc = new jsPDF({ unit: "mm", format: "a4" });
-  const pageW = 210, pageH = 297, margin = 8, gap = 3;
+  const orient = print.orientation;
+  const pw = orient === "landscape" ? print.pageH : print.pageW;
+  const ph = orient === "landscape" ? print.pageW : print.pageH;
+  const doc = new jsPDF({
+    unit: "mm",
+    format: [pw, ph],
+    orientation: orient,
+  });
+  const pageW = pw, pageH = ph, margin = print.margin, gap = print.gap;
   const W = cfg.width, H = cfg.height;
   const cols = Math.max(1, Math.floor((pageW - margin * 2 + gap) / (W + gap)));
   const rows = Math.max(1, Math.floor((pageH - margin * 2 + gap) / (H + gap)));
@@ -594,7 +719,7 @@ async function exportMixed(items: BatchItem[], cfg: LabelConfig) {
     await renderToCanvas(canvas, it.value, itemCfg);
     doc.addImage(canvas.toDataURL("image/png"), "PNG", x, y, W, H);
   }
-  doc.save(`etiquetas-${items.length}.pdf`);
+  doc.save(filename);
 }
 
 function SliderRow({

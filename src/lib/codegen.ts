@@ -19,6 +19,8 @@ export interface LabelConfig {
   bg: string;
   /** Default QR link/content when type === "both" and item has no qrLink */
   qrLink?: string;
+  /** Gap (mm) between QR and barcode when type === "both" */
+  bothGap?: number;
 }
 
 export interface LabelItem {
@@ -42,6 +44,7 @@ export const defaultConfig: LabelConfig = {
   align: "center",
   fg: "#111111",
   bg: "#ffffff",
+  bothGap: 2,
 };
 
 export async function renderToCanvas(
@@ -92,8 +95,8 @@ export async function renderToCanvas(
 
   const tmp = document.createElement("canvas");
   if (cfg.type === "both") {
-    // QR on the left, barcode on the right, sharing codeAreaW with a small gap
-    const gap = 4;
+    // QR on the left, barcode on the right, sharing codeAreaW with a configurable gap
+    const gap = Math.max(0, (cfg.bothGap ?? 2) * dpi);
     const qrSize = Math.min(codeAreaH, Math.floor((codeAreaW - gap) * 0.4));
     const barW = codeAreaW - gap - qrSize;
     const qrCanvas = document.createElement("canvas");
