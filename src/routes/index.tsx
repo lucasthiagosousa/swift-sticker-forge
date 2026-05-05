@@ -240,23 +240,17 @@ function Index() {
 
   const exportSingle = () => {
     if (!selected) return;
-    exportLabelsPDF(
-      [{
-        value: selected.value,
-        title: selected.title,
-        subtitle: selected.subtitle,
-        qrLink: selected.qrLink,
-      }],
-      { ...config, type: selected.type ?? config.type },
+    exportMixed(
+      [{ ...selected, type: selected.type ?? config.type }],
+      config,
+      printCfg,
       "etiqueta.pdf",
     );
   };
 
   const exportBatch = () => {
     if (!items.length) return toast.error("Lista vazia");
-    // group consecutive items by type to keep formatting; simplest: one PDF, mixed types — render each with its own type
-    // We render via per-item override of cfg.type by iterating with custom export
-    exportMixed(items, config);
+    exportMixed(items, config, printCfg);
   };
 
   const exportListCSV = () => {
