@@ -597,6 +597,81 @@ function Index() {
               ))}
             </div>
           </div>
+
+          <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+            <h3 className="text-sm font-semibold">Impressão</h3>
+            <div>
+              <Label className="text-xs">Formato da página</Label>
+              <Select
+                value={printCfg.format}
+                onValueChange={(v) => {
+                  const f = v as PrintConfig["format"];
+                  const p = PRINT_PRESETS[f];
+                  setPrintCfg((c) => ({ ...c, format: f, pageW: p.pageW, pageH: p.pageH }));
+                }}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="a4">A4 (210×297mm)</SelectItem>
+                  <SelectItem value="letter">Letter (216×279mm)</SelectItem>
+                  <SelectItem value="zebra">Zebra 4×6" (102×152mm)</SelectItem>
+                  <SelectItem value="custom">Personalizado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="text-xs">Orientação</Label>
+              <Select
+                value={printCfg.orientation}
+                onValueChange={(v) => updatePrint("orientation", v as PrintConfig["orientation"])}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="portrait">Retrato</SelectItem>
+                  <SelectItem value="landscape">Paisagem</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            {printCfg.format === "custom" && (
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <Label className="text-xs">Largura (mm)</Label>
+                  <Input
+                    type="number"
+                    value={printCfg.pageW}
+                    onChange={(e) => updatePrint("pageW", Number(e.target.value) || 0)}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Altura (mm)</Label>
+                  <Input
+                    type="number"
+                    value={printCfg.pageH}
+                    onChange={(e) => updatePrint("pageH", Number(e.target.value) || 0)}
+                  />
+                </div>
+              </div>
+            )}
+            <SliderRow
+              label="Margem"
+              suffix="mm"
+              value={printCfg.margin}
+              min={0}
+              max={30}
+              onChange={(v) => updatePrint("margin", v)}
+            />
+            <SliderRow
+              label="Espaço entre etiquetas"
+              suffix="mm"
+              value={printCfg.gap}
+              min={0}
+              max={20}
+              onChange={(v) => updatePrint("gap", v)}
+            />
+            <p className="text-[10px] text-muted-foreground">
+              Para impressoras Zebra, use o formato 4×6" ou personalize a área da etiqueta.
+            </p>
+          </div>
         </section>
       </main>
 
