@@ -302,40 +302,57 @@ function Index() {
     setItems((arr) => (arr.length > 1 ? arr.filter((i) => i.id !== id) : arr));
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-[var(--gradient-soft)]">
       <Toaster />
-      <header className="border-b border-border">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
-          <div className="flex items-center gap-2.5">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-foreground text-background shadow-sm">
-              <Sparkles className="h-4 w-4" />
+      <header className="sticky top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur-xl">
+        <div className="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4">
+          <div className="flex items-center gap-3">
+            <div
+              className="flex h-10 w-10 items-center justify-center rounded-xl text-background shadow-sm"
+              style={{ background: "var(--gradient-hero)" }}
+            >
+              <Sparkles className="h-5 w-5" />
             </div>
             <div className="leading-tight">
-              <h1 className="text-base font-semibold tracking-tight">Etiqueta</h1>
-              <p className="text-[11px] text-muted-foreground">Editor minimalista de QR & barras</p>
+              <h1 className="text-base font-semibold tracking-tight sm:text-lg">Etiqueta</h1>
+              <p className="hidden text-[11px] text-muted-foreground sm:block">
+                Editor minimalista de QR & código de barras
+              </p>
             </div>
           </div>
-          <div className="hidden items-center gap-2 md:flex">
-            <Button onClick={exportSingle} variant="outline" size="sm">
-              <Download /> Esta etiqueta
+          <div className="flex items-center gap-2">
+            <Button onClick={exportSingle} variant="outline" size="sm" className="hidden sm:inline-flex">
+              <Download /> Esta
             </Button>
-            <Button onClick={exportBatch} size="sm">
-              <Download /> PDF em lote
+            <Button
+              onClick={exportBatch}
+              size="sm"
+              className="shadow-sm"
+              style={{ background: "var(--gradient-hero)" }}
+            >
+              <Download /> <span className="hidden sm:inline">PDF em lote</span>
+              <span className="sm:hidden">PDF</span>
             </Button>
           </div>
         </div>
       </header>
 
-      <main className="mx-auto grid max-w-7xl gap-6 px-6 py-8 lg:grid-cols-[320px_1fr_340px]">
+      <main className="mx-auto grid max-w-7xl gap-4 px-4 py-6 sm:px-6 sm:py-8 lg:grid-cols-[300px_minmax(0,1fr)_360px] lg:gap-6">
         {/* Lista de etiquetas */}
-        <section className="space-y-3">
+        <section className="space-y-3 lg:sticky lg:top-[88px] lg:self-start">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold">Etiquetas ({items.length})</h2>
+            <h2 className="flex items-center gap-2 text-sm font-semibold">
+              <Tags className="h-4 w-4 text-muted-foreground" />
+              Etiquetas
+              <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                {items.length}
+              </span>
+            </h2>
             <Button size="sm" variant="outline" onClick={addItem}>
               <Plus /> Nova
             </Button>
           </div>
-          <div className="space-y-2 max-h-[70vh] overflow-y-auto pr-1">
+          <div className="space-y-1.5 max-h-[40vh] overflow-y-auto pr-1 lg:max-h-[55vh]">
             {items.map((it) => {
               const active = it.id === selected?.id;
               const t = it.type ?? config.type;
@@ -343,16 +360,18 @@ function Index() {
                 <div
                   key={it.id}
                   onClick={() => setSelectedId(it.id)}
-                  className={`group cursor-pointer rounded-lg border p-3 transition ${
+                  className={`group cursor-pointer rounded-lg border p-2.5 transition-all ${
                     active
-                      ? "border-foreground bg-secondary"
-                      : "border-border hover:bg-muted/50"
+                      ? "border-foreground bg-card shadow-sm ring-1 ring-foreground/10"
+                      : "border-border/70 bg-card/60 hover:border-border hover:bg-card"
                   }`}
                 >
                   <div className="flex items-start gap-2">
-                    <div className="mt-0.5 text-muted-foreground">
+                    <div className={`mt-0.5 ${active ? "text-foreground" : "text-muted-foreground"}`}>
                       {t === "qrcode" ? (
                         <QrCode className="h-4 w-4" />
+                      ) : t === "both" ? (
+                        <Layers className="h-4 w-4" />
                       ) : (
                         <Barcode className="h-4 w-4" />
                       )}
@@ -365,7 +384,7 @@ function Index() {
                         </div>
                       )}
                     </div>
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100">
+                    <div className="flex gap-1 opacity-0 transition group-hover:opacity-100">
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -391,7 +410,7 @@ function Index() {
             })}
           </div>
 
-          <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+          <div className="rounded-xl border border-border/70 bg-card p-3 space-y-2 shadow-sm">
             <div className="flex flex-wrap gap-2">
               <label className="inline-flex flex-1">
                 <input
@@ -409,38 +428,47 @@ function Index() {
                 </Button>
               </label>
               <Button onClick={exportListCSV} variant="outline" size="sm" className="flex-1">
-                <FileDown /> Exportar CSV
+                <FileDown /> CSV
               </Button>
             </div>
-            <Button onClick={exportBatch} className="w-full" size="sm">
-              <Download /> PDF em lote
-            </Button>
             <p className="text-[10px] leading-relaxed text-muted-foreground">
-              CSV aceita colunas: value, title, subtitle, type (qrcode/barcode).
+              CSV: <code className="font-mono">value, title, subtitle, type, qrlink</code>
             </p>
           </div>
         </section>
 
         {/* Preview + edição do item */}
         <section className="space-y-4">
-          <LabelPreview value={selected?.value || ""} config={previewConfig} />
+          <div className="overflow-hidden rounded-2xl border border-border/70 bg-card shadow-[var(--shadow-elegant)]">
+            <div className="flex items-center justify-between border-b border-border/60 bg-muted/40 px-4 py-2.5">
+              <span className="text-xs font-medium text-muted-foreground">Pré-visualização</span>
+              <span className="font-mono text-[10px] text-muted-foreground">
+                {config.width} × {config.height} mm
+              </span>
+            </div>
+            <div className="p-2">
+              <LabelPreview value={selected?.value || ""} config={previewConfig} />
+            </div>
+          </div>
 
           {selected && (
-            <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+            <div className="rounded-2xl border border-border/70 bg-card p-5 space-y-4 shadow-sm">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold">Editar etiqueta</h3>
+                <h3 className="flex items-center gap-2 text-sm font-semibold">
+                  <Settings2 className="h-4 w-4 text-muted-foreground" />
+                  Editar etiqueta
+                </h3>
                 <Button onClick={exportSingle} size="sm" variant="outline">
                   <Download /> PDF desta
                 </Button>
               </div>
 
-              <div className="flex gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 <Button
                   variant={
                     (selected.type ?? config.type) === "qrcode" ? "default" : "outline"
                   }
                   size="sm"
-                  className="flex-1"
                   onClick={() => updateItem(selected.id, { type: "qrcode" })}
                 >
                   <QrCode /> QR
@@ -450,7 +478,6 @@ function Index() {
                     (selected.type ?? config.type) === "barcode" ? "default" : "outline"
                   }
                   size="sm"
-                  className="flex-1"
                   onClick={() => updateItem(selected.id, { type: "barcode" })}
                 >
                   <Barcode /> Barras
@@ -460,10 +487,9 @@ function Index() {
                     (selected.type ?? config.type) === "both" ? "default" : "outline"
                   }
                   size="sm"
-                  className="flex-1"
                   onClick={() => updateItem(selected.id, { type: "both" })}
                 >
-                  <QrCode /> + <Barcode /> Ambos
+                  <Layers /> Ambos
                 </Button>
               </div>
 
@@ -472,6 +498,7 @@ function Index() {
                 <Input
                   value={selected.value}
                   onChange={(e) => updateItem(selected.id, { value: e.target.value })}
+                  className="font-mono"
                 />
               </div>
               {((selected.type ?? config.type) === "qrcode" ||
