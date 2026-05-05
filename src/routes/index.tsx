@@ -47,6 +47,32 @@ interface Preset {
 const LS_PRESETS = "etiqueta.presets";
 const LS_CONFIG = "etiqueta.config";
 const LS_ITEMS = "etiqueta.items";
+const LS_PRINT = "etiqueta.print";
+
+interface PrintConfig {
+  format: "a4" | "letter" | "zebra" | "custom";
+  pageW: number; // mm
+  pageH: number; // mm
+  margin: number; // mm
+  gap: number; // mm
+  orientation: "portrait" | "landscape";
+}
+
+const PRINT_PRESETS: Record<PrintConfig["format"], { pageW: number; pageH: number }> = {
+  a4: { pageW: 210, pageH: 297 },
+  letter: { pageW: 216, pageH: 279 },
+  zebra: { pageW: 102, pageH: 152 }, // 4x6"
+  custom: { pageW: 100, pageH: 150 },
+};
+
+const defaultPrint: PrintConfig = {
+  format: "a4",
+  pageW: 210,
+  pageH: 297,
+  margin: 8,
+  gap: 3,
+  orientation: "portrait",
+};
 
 const newItem = (overrides: Partial<BatchItem> = {}): BatchItem => ({
   id: crypto.randomUUID(),
