@@ -15,6 +15,12 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { LabelPreview } from "@/components/LabelPreview";
 import { SheetPreview } from "@/components/SheetPreview";
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+} from "@/components/ui/tabs";
 import { defaultConfig, type LabelConfig, type LabelItem, type CodeType } from "@/lib/codegen";
 import { exportLabelsPDF } from "@/lib/pdf";
 import {
@@ -28,6 +34,11 @@ import {
   Sparkles,
   Plus,
   Copy,
+  Settings2,
+  Layers,
+  Printer,
+  ListChecks,
+  Tags,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Toaster } from "@/components/ui/sonner";
