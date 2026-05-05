@@ -123,6 +123,18 @@ function Index() {
   });
   const [presetName, setPresetName] = useState("");
 
+  const [printCfg, setPrintCfg] = useState<PrintConfig>(() => {
+    if (typeof window === "undefined") return defaultPrint;
+    try {
+      const raw = localStorage.getItem(LS_PRINT);
+      return raw ? { ...defaultPrint, ...JSON.parse(raw) } : defaultPrint;
+    } catch {
+      return defaultPrint;
+    }
+  });
+  const updatePrint = <K extends keyof PrintConfig>(k: K, v: PrintConfig[K]) =>
+    setPrintCfg((c) => ({ ...c, [k]: v }));
+
   useEffect(() => {
     localStorage.setItem(LS_CONFIG, JSON.stringify(config));
   }, [config]);
@@ -132,6 +144,9 @@ function Index() {
   useEffect(() => {
     localStorage.setItem(LS_ITEMS, JSON.stringify(items));
   }, [items]);
+  useEffect(() => {
+    localStorage.setItem(LS_PRINT, JSON.stringify(printCfg));
+  }, [printCfg]);
 
   const update = <K extends keyof LabelConfig>(k: K, v: LabelConfig[K]) =>
     setConfig((c) => ({ ...c, [k]: v }));
