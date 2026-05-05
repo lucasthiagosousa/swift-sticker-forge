@@ -300,9 +300,6 @@ function Index() {
             </div>
             <h1 className="text-lg font-semibold tracking-tight">Etiqueta</h1>
           </div>
-          <p className="hidden text-xs text-muted-foreground sm:block">
-            QR Code & Código de Barras · 100% no navegador
-          </p>
         </div>
       </header>
 
@@ -592,9 +589,7 @@ function Index() {
         </section>
       </main>
 
-      <footer className="border-t border-border py-6 text-center text-xs text-muted-foreground">
-        Tudo no seu navegador — nada é enviado para servidores.
-      </footer>
+
     </div>
   );
 }
