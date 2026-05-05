@@ -683,6 +683,22 @@ function Index() {
             <p className="text-[10px] text-muted-foreground">
               Para impressoras Zebra, use o formato 4×6" ou personalize a área da etiqueta.
             </p>
+            <div className="border-t border-border pt-4">
+              <Label className="mb-2 block text-xs font-medium">
+                Pré-visualização da folha
+              </Label>
+              <SheetPreview
+                pageW={printCfg.pageW}
+                pageH={printCfg.pageH}
+                margin={printCfg.margin}
+                gap={printCfg.gap}
+                labelW={config.width}
+                labelH={config.height}
+                orientation={printCfg.orientation}
+                total={items.length}
+                selectedIndex={items.findIndex((i) => i.id === selected?.id)}
+              />
+            </div>
           </div>
         </section>
       </main>
