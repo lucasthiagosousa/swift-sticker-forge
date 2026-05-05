@@ -509,6 +509,17 @@ function Index() {
                   </Select>
                 </div>
               )}
+
+              {(selected.type ?? config.type) === "both" && (
+                <SliderRow
+                  label="Espaço entre QR e Barras"
+                  suffix="mm"
+                  value={config.bothGap ?? 2}
+                  min={0}
+                  max={20}
+                  onChange={(v) => update("bothGap", v)}
+                />
+              )}
             </div>
           )}
         </section>
