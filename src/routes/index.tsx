@@ -599,14 +599,23 @@ function Index() {
   );
 }
 
-async function exportMixed(items: BatchItem[], cfg: LabelConfig) {
-  // group by type to keep PDF correct: actually exportLabelsPDF accepts per-item title/subtitle but not type.
-  // Workaround: split into runs of same type, exporting separate PDFs would be ugly.
-  // Simpler: render via a lightweight loop using exportLabelsPDF per-type chunk concatenated into one PDF.
+async function exportMixed(
+  items: BatchItem[],
+  cfg: LabelConfig,
+  print: PrintConfig,
+  filename = `etiquetas-${items.length}.pdf`,
+) {
   const { jsPDF } = await import("jspdf");
   const { renderToCanvas } = await import("@/lib/codegen");
-  const doc = new jsPDF({ unit: "mm", format: "a4" });
-  const pageW = 210, pageH = 297, margin = 8, gap = 3;
+  const orient = print.orientation;
+  const pw = orient === "landscape" ? print.pageH : print.pageW;
+  const ph = orient === "landscape" ? print.pageW : print.pageH;
+  const doc = new jsPDF({
+    unit: "mm",
+    format: [pw, ph],
+    orientation: orient,
+  });
+  const pageW = pw, pageH = ph, margin = print.margin, gap = print.gap;
   const W = cfg.width, H = cfg.height;
   const cols = Math.max(1, Math.floor((pageW - margin * 2 + gap) / (W + gap)));
   const rows = Math.max(1, Math.floor((pageH - margin * 2 + gap) / (H + gap)));
@@ -629,7 +638,7 @@ async function exportMixed(items: BatchItem[], cfg: LabelConfig) {
     await renderToCanvas(canvas, it.value, itemCfg);
     doc.addImage(canvas.toDataURL("image/png"), "PNG", x, y, W, H);
   }
-  doc.save(`etiquetas-${items.length}.pdf`);
+  doc.save(filename);
 }
 
 function SliderRow({
