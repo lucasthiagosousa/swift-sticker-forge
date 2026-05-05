@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { LabelPreview } from "@/components/LabelPreview";
+import { SheetPreview } from "@/components/SheetPreview";
 import { defaultConfig, type LabelConfig, type LabelItem, type CodeType } from "@/lib/codegen";
 import { exportLabelsPDF } from "@/lib/pdf";
 import {
@@ -294,11 +295,22 @@ function Index() {
       <Toaster />
       <header className="border-b border-border">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-foreground text-background">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-foreground text-background shadow-sm">
               <Sparkles className="h-4 w-4" />
             </div>
-            <h1 className="text-lg font-semibold tracking-tight">Etiqueta</h1>
+            <div className="leading-tight">
+              <h1 className="text-base font-semibold tracking-tight">Etiqueta</h1>
+              <p className="text-[11px] text-muted-foreground">Editor minimalista de QR & barras</p>
+            </div>
+          </div>
+          <div className="hidden items-center gap-2 md:flex">
+            <Button onClick={exportSingle} variant="outline" size="sm">
+              <Download /> Esta etiqueta
+            </Button>
+            <Button onClick={exportBatch} size="sm">
+              <Download /> PDF em lote
+            </Button>
           </div>
         </div>
       </header>
@@ -671,6 +683,22 @@ function Index() {
             <p className="text-[10px] text-muted-foreground">
               Para impressoras Zebra, use o formato 4×6" ou personalize a área da etiqueta.
             </p>
+            <div className="border-t border-border pt-4">
+              <Label className="mb-2 block text-xs font-medium">
+                Pré-visualização da folha
+              </Label>
+              <SheetPreview
+                pageW={printCfg.pageW}
+                pageH={printCfg.pageH}
+                margin={printCfg.margin}
+                gap={printCfg.gap}
+                labelW={config.width}
+                labelH={config.height}
+                orientation={printCfg.orientation}
+                total={items.length}
+                selectedIndex={items.findIndex((i) => i.id === selected?.id)}
+              />
+            </div>
           </div>
         </section>
       </main>
