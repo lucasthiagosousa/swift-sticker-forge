@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { LabelPreview } from "@/components/LabelPreview";
+import { SheetPreview } from "@/components/SheetPreview";
 import { defaultConfig, type LabelConfig, type LabelItem, type CodeType } from "@/lib/codegen";
 import { exportLabelsPDF } from "@/lib/pdf";
 import {
@@ -294,11 +295,22 @@ function Index() {
       <Toaster />
       <header className="border-b border-border">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
-          <div className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-foreground text-background">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-foreground text-background shadow-sm">
               <Sparkles className="h-4 w-4" />
             </div>
-            <h1 className="text-lg font-semibold tracking-tight">Etiqueta</h1>
+            <div className="leading-tight">
+              <h1 className="text-base font-semibold tracking-tight">Etiqueta</h1>
+              <p className="text-[11px] text-muted-foreground">Editor minimalista de QR & barras</p>
+            </div>
+          </div>
+          <div className="hidden items-center gap-2 md:flex">
+            <Button onClick={exportSingle} variant="outline" size="sm">
+              <Download /> Esta etiqueta
+            </Button>
+            <Button onClick={exportBatch} size="sm">
+              <Download /> PDF em lote
+            </Button>
           </div>
         </div>
       </header>
