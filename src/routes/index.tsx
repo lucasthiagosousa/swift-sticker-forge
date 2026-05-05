@@ -575,9 +575,22 @@ function Index() {
         </section>
 
         {/* Layout + Presets */}
-        <section className="space-y-6">
-          <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-            <h3 className="text-sm font-semibold">Layout</h3>
+        <section className="space-y-4 lg:sticky lg:top-[88px] lg:self-start">
+          <Tabs defaultValue="layout" className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="layout">
+                <Settings2 className="h-3.5 w-3.5" /> Layout
+              </TabsTrigger>
+              <TabsTrigger value="presets">
+                <ListChecks className="h-3.5 w-3.5" /> Presets
+              </TabsTrigger>
+              <TabsTrigger value="print">
+                <Printer className="h-3.5 w-3.5" /> Impressão
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="layout" className="mt-3">
+              <div className="rounded-2xl border border-border/70 bg-card p-5 space-y-4 shadow-sm">
             <SliderRow label="Largura" suffix="mm" value={config.width} min={20} max={200}
               onChange={(v) => update("width", v)} />
             <SliderRow label="Altura" suffix="mm" value={config.height} min={20} max={200}
@@ -616,21 +629,25 @@ function Index() {
               <Switch checked={config.showValue}
                 onCheckedChange={(v) => update("showValue", v)} />
             </div>
-          </div>
+              </div>
+            </TabsContent>
 
-          <div className="rounded-xl border border-border bg-card p-5 space-y-3">
-            <h3 className="text-sm font-semibold">Presets de layout</h3>
+            <TabsContent value="presets" className="mt-3">
+              <div className="rounded-2xl border border-border/70 bg-card p-5 space-y-3 shadow-sm">
             <div className="flex gap-2">
               <Input value={presetName} onChange={(e) => setPresetName(e.target.value)}
-                placeholder="Nome" />
+                placeholder="Nome do preset" />
               <Button onClick={savePreset} size="icon" variant="outline">
                 <Save />
               </Button>
             </div>
             {presets.length === 0 && (
-              <p className="text-xs text-muted-foreground">
-                Salve combinações de layout para reutilizar.
-              </p>
+              <div className="rounded-lg border border-dashed border-border py-6 text-center">
+                <ListChecks className="mx-auto mb-2 h-5 w-5 text-muted-foreground" />
+                <p className="text-xs text-muted-foreground">
+                  Salve combinações de layout para reutilizar.
+                </p>
+              </div>
             )}
             <div className="space-y-1">
               {presets.map((p) => (
@@ -646,10 +663,11 @@ function Index() {
                 </div>
               ))}
             </div>
-          </div>
+              </div>
+            </TabsContent>
 
-          <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-            <h3 className="text-sm font-semibold">Impressão</h3>
+            <TabsContent value="print" className="mt-3">
+              <div className="rounded-2xl border border-border/70 bg-card p-5 space-y-4 shadow-sm">
             <div>
               <Label className="text-xs">Formato da página</Label>
               <Select
@@ -718,9 +736,6 @@ function Index() {
               max={20}
               onChange={(v) => updatePrint("gap", v)}
             />
-            <p className="text-[10px] text-muted-foreground">
-              Para impressoras Zebra, use o formato 4×6" ou personalize a área da etiqueta.
-            </p>
             <div className="border-t border-border pt-4">
               <Label className="mb-2 block text-xs font-medium">
                 Pré-visualização da folha
@@ -737,7 +752,9 @@ function Index() {
                 selectedIndex={items.findIndex((i) => i.id === selected?.id)}
               />
             </div>
-          </div>
+              </div>
+            </TabsContent>
+          </Tabs>
         </section>
       </main>
 
